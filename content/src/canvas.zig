@@ -1,91 +1,80 @@
-const std = @import("std");
+const art = @import("art.zig");
 
-extern fn consoleLog(arg: usize) void;
+fn pattern(x: usize, y: usize) art.RGBA {
+    return .{
+        @as(u8, @intCast(x * 2 ^ y)),
+        @as(u8, @intCast(x ^ y)),
+        @as(u8, @intCast(x ^ y)),
+        @intCast(@mod(state.n * 1, 255)),
+    };
+}
 
-const Canvas = struct {
-    const size: usize = 16;
-    const fps: usize = 12;
+const orange = art.rgb(0xFF6600);
+const white = art.rgb(0xFFFFFF);
 
-    buffer: [size][size][4]u8 = std.mem.zeroes([size][size][4]u8),
-
+var state: struct {
     n: usize = 0,
+    old: u32 = 0,
+    pos: art.Size = .{ 0, 0 },
+    color: art.RGB = white,
 
-    pub fn update(self: *Canvas) void {
+    const State = @This();
+
+    fn draw(self: *State) void {
+        art.clear(.{ 0, 0, 0, 255 });
+
+        art.fill(pattern);
+
+        art.box(11, 2, .{
+            .size = .{ 6, 9 },
+            .color = .{ 255, 0, 0 },
+            .fill = true,
+            .fillColor = .{ 0, 255, 0 },
+        });
+
+        art.set(self.pos[0], self.pos[1], self.color);
+
+        art.vline(14, 12, 5, .{ 255, 0, 255 });
+    }
+
+    fn update(self: *State, pad: u32) void {
         self.n += 1;
 
-        self.checkerboard();
+        const key = art.key(pad);
+        const old = art.key(self.old);
 
-        self.set(0, 10, .{ 255, 0, 0 });
-        self.set(1, 10, .{ 255, 0, 0 });
-        self.set(2, 10, .{ 255, 0, 0 });
-        self.set(8, 12, .{ 0, 0, @intCast(@mod(self.n, 255)) });
-
-        const x: usize = @mod((self.n / 2) + 3, 16);
-
-        self.set(x, 15, .{ 0, 255, 0 });
-
-        consoleLog(x);
-    }
-
-    fn set(self: *Canvas, x: usize, y: usize, c: [3]u8) void {
-        if (x < 0 or x > size or y < 0 or y > size) {
-            return;
+        if (key.x and !old.x) {
+            self.color = if (@reduce(.And, self.color == orange)) white else orange;
         }
 
-        self.buffer[y][x] = .{ c[0], c[1], c[2], 255 };
-    }
+        if (key.z) self.color = white;
 
-    fn clear(self: *Canvas, c: [3]u8) void {
-        for (&self.buffer) |*row| {
-            for (row) |*square| {
-                square.* = .{ c[0], c[1], c[2], 255 };
+        if (key.up and !old.up) {
+            self.pos[1] -|= 1;
+        }
+
+        if (key.down and !old.down) if (self.pos[1] < art.size - 1) {
+            self.pos[1] += 1;
+        };
+
+        if (key.left and !old.left) {
+            self.pos[0] -|= 1;
+        }
+
+        if (key.right and !old.right) {
+            if (self.pos[0] < art.size - 1) {
+                self.pos[0] += 1;
             }
         }
+
+        self.old = pad;
     }
+} = .{};
 
-    fn checkerboard(self: *Canvas) void {
-        for (&self.buffer, 0..) |*row, y| {
-            for (row, 0..) |*square, x| {
-                var dark = true;
-
-                if ((y % 2) == 0) {
-                    dark = false;
-                }
-
-                if ((x % 2) == 0) {
-                    dark = !dark;
-                }
-
-                var p = pix(0, 0, 0);
-
-                if (!dark) {
-                    p = pix(255, 255, 255);
-                }
-
-                square.* = p;
-            }
-        }
-    }
-};
-
-var canvas = Canvas{};
-
-export fn canvasSize() usize {
-    return Canvas.size;
+export fn draw() void {
+    state.draw();
 }
 
-export fn canvasFPS() usize {
-    return Canvas.fps;
-}
-
-export fn canvasBufferOffset() [*]u8 {
-    return @ptrCast(&canvas.buffer);
-}
-
-export fn update() void {
-    canvas.update();
-}
-
-fn pix(r: u8, g: u8, b: u8) [4]u8 {
-    return .{ r, g, b, 255 };
+export fn update(pad: u32) void {
+    state.update(pad);
 }

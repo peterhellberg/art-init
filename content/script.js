@@ -13,59 +13,111 @@ var importObject = {
 
 var source = fetch("zig-out/bin/art-canvas.wasm");
 
+class State {
+  gamepads = [0];
+}
+
+const KEY_X = 1;
+const KEY_Z = 2;
+const KEY_LEFT = 16;
+const KEY_RIGHT = 32;
+const KEY_UP = 64;
+const KEY_DOWN = 128;
+
 WebAssembly.instantiateStreaming(source, importObject).then((wasm) => {
+    const state = new State();
+
     const mem = new Uint8Array(memory.buffer);
-    const size = wasm.instance.exports.canvasSize();
     const canvas = document.getElementById("art");
 
-    // Set the canvas width and height to a square of the size retrieved from WASM
+    const size = wasm.instance.exports.canvasSize();
+
     canvas.width = size;
     canvas.height = size;
 
-    // Get a 2D context to draw into
     const context = canvas.getContext("2d");
-
-    // Create image data for the entire canvas
     const imageData = context.createImageData(canvas.width, canvas.height);
-
-    // Get the buffer offset for the canvas
     const bufferOffset = wasm.instance.exports.canvasBufferOffset();
-
-    // Get the desired FPS
     const fps = wasm.instance.exports.canvasFPS();
 
-    // When we should perform the next update
-    let timeNextUpdate = performance.now();
+    let timeNextDraw = performance.now();
 
-    const draw = (timeFrameStart) => {
-      requestAnimationFrame(draw);
-
-      let calledUpdate = false;
-
-      // Prevent timeFrameStart from getting too far ahead and death spiralling
-      if (timeFrameStart - timeNextUpdate >= 200) {
-          timeNextUpdate = timeFrameStart;
+    const onKeyboardEvent = (event) => {
+      if (event.ctrlKey || event.altKey) {
+        return;
       }
 
-      while (timeFrameStart >= timeNextUpdate) {
-        timeNextUpdate += 1000/fps;
-
-        wasm.instance.exports.update();
-
-        calledUpdate = true;
+      if (event.srcElement instanceof HTMLElement && event.srcElement.tagName == "INPUT") {
+        return;
       }
 
-      if (calledUpdate) {
-        // Set the image data from a slice of memory from bufferOffset
+      const down = (event.type == "keydown");
+
+      let mask = 0;
+
+      switch (event.code) {
+      case "KeyX": case "KeyV": case "Space": case "Period":
+        mask = KEY_X;
+        break;
+      case "KeyZ": case "KeyC": case "Comma":
+        mask = KEY_Z;
+        break;
+      case "ArrowUp":
+        mask = KEY_UP;
+        break;
+      case "ArrowDown":
+        mask = KEY_DOWN;
+        break;
+      case "ArrowLeft":
+        mask = KEY_LEFT;
+        break;
+      case "ArrowRight":
+        mask = KEY_RIGHT;
+        break;
+      }
+
+      if (mask != 0) {
+        event.preventDefault();
+
+        const gamepads = state.gamepads;
+
+        if (down) {
+            gamepads[0] |= mask;
+        } else {
+            gamepads[0] &= ~mask;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyboardEvent);
+    window.addEventListener("keyup", onKeyboardEvent);
+
+    const frame = (timeFrameStart) => {
+      requestAnimationFrame(frame);
+
+      wasm.instance.exports.update(state.gamepads[0]);
+
+      let calledDraw = false;
+
+      if (timeFrameStart - timeNextDraw >= 200) {
+          timeNextDraw = timeFrameStart;
+      }
+
+      while (timeFrameStart >= timeNextDraw) {
+        timeNextDraw += 1000/fps;
+        wasm.instance.exports.draw();
+        calledDraw = true;
+      }
+
+      if (calledDraw) {
         imageData.data.set(mem.slice(
             bufferOffset,
             bufferOffset + canvas.width * canvas.height * 4
         ));
 
-        // Draw the image data into the canvas
         context.putImageData(imageData, 0, 0);
       }
     };
 
-    requestAnimationFrame(draw);
+    requestAnimationFrame(frame);
 });
