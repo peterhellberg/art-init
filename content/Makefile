@@ -17,7 +17,7 @@ spy:
 
 .PHONY: run
 run: build
-	serve .
+	npx live-server . --wait=0ms --watch=zig-out/bin
 
 .PHONY: clean
 clean:
