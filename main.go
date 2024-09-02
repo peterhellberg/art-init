@@ -109,7 +109,18 @@ func run(args []string, _ io.Writer) error {
 		}
 	}
 
+	if err := createFile("favicon.ico"); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func createFile(name string) error {
+	f, err := os.Create(name)
+	defer f.Close()
+
+	return err
 }
 
 func writeFile(cfg config, name string, dataFuncs ...dataFunc) error {
