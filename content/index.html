@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>art-canvas-title</title>
+        <script src="script.js"></script>
+        <style>
+          :root {
+            --main-bg-color: #332f35;
+          }
+
+          body {
+            margin: 0;
+            height: 100%;
+            background: var(--main-bg-color);
+          }
+
+          canvas {
+            aspect-ratio: 1;
+            image-rendering: pixelated;
+            height: 100dvh;
+            display: block;
+          }
+        </style>
+    </head>
+    <body>
+      <center>
+        <canvas id="art"></canvas>
+      </center>
+    </body>
+</html>
