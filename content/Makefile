@@ -13,7 +13,7 @@ build:
 
 .PHONY: spy
 spy:
-	spy-clear-zig build
+	spy --exc zig-cache --inc "**/*.zig" -q clear-zig build
 
 .PHONY: run
 run: build
