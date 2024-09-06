@@ -27,9 +27,10 @@ clean:
 .PHONY: deploy
 deploy: build
 	@ssh ${HOSTNAME} 'mkdir -p ${SERVER_PATH}/${BIN_PATH} ${SERVER_PATH}/src'
-	@scp -q src/art.zig ${HOSTNAME}:${SERVER_PATH}/src/art.zig
-	@scp -q src/canvas.zig ${HOSTNAME}:${SERVER_PATH}/src/canvas.zig
+	@scp -q build.zig ${HOSTNAME}:${SERVER_PATH}/build.zig
 	@scp -q index.html ${HOSTNAME}:${SERVER_PATH}/index.html
 	@scp -q script.js ${HOSTNAME}:${SERVER_PATH}/script.js
+	@scp -q src/art.zig ${HOSTNAME}:${SERVER_PATH}/src/art.zig
+	@scp -q src/canvas.zig ${HOSTNAME}:${SERVER_PATH}/src/canvas.zig
 	@scp -q ${BIN_PATH}/${NAME}.wasm ${HOSTNAME}:${SERVER_PATH}/${BIN_PATH}/${NAME}.wasm
 	@echo "✔ Updated ${NAME} on ${ART_URL}"
