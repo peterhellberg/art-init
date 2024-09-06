@@ -90,7 +90,6 @@ func run(args []string, _ io.Writer) error {
 			if err := writeFile(cfg, e.Name(), replacer); err != nil {
 				return err
 			}
-
 		} else {
 			if e.Name() == "src" {
 				srcEntries, err := content.ReadDir("content/src")
@@ -118,7 +117,7 @@ func run(args []string, _ io.Writer) error {
 
 func createFile(name string) error {
 	f, err := os.Create(name)
-	defer f.Close()
+	defer func() { f.Close() }()
 
 	return err
 }
@@ -133,7 +132,7 @@ func writeFile(cfg config, name string, dataFuncs ...dataFunc) error {
 		data = dataFuncs[i](cfg, name, data)
 	}
 
-	return os.WriteFile(name, data, 0644)
+	return os.WriteFile(name, data, 0o644)
 }
 
 type dataFunc func(config, string, []byte) []byte
