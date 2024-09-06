@@ -15,7 +15,7 @@ const white = art.rgb(0xFFFFFF);
 var state: struct {
     n: usize = 0,
     old: u32 = 0,
-    pos: art.Size = .{ 0, 0 },
+    pos: art.Point = .{ 0, 0 },
     color: art.RGB = white,
 
     const State = @This();
@@ -71,10 +71,14 @@ var state: struct {
     }
 } = .{};
 
-export fn draw() void {
-    state.draw();
+export fn start() void {
+    art.log("Hello from Zig!");
 }
 
 export fn update(pad: u32) void {
     state.update(pad);
+}
+
+export fn draw() void {
+    state.draw();
 }

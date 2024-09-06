@@ -14,13 +14,13 @@ pub fn build(b: *std.Build) void {
         .strip = true,
     });
 
-    const number_of_pages = 4; // Must be same as in script.js
+    const number_of_pages = 4;
 
     exe.entry = .disabled;
-    exe.import_memory = true;
+    exe.export_memory = true;
     exe.initial_memory = std.wasm.page_size * number_of_pages;
     exe.max_memory = std.wasm.page_size * number_of_pages;
-    exe.stack_size = std.wasm.page_size;
+    exe.stack_size = 512;
     exe.rdynamic = true;
 
     b.installArtifact(exe);

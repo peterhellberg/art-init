@@ -1,43 +1,16 @@
 const std = @import("std");
 
-pub const size: usize = 32;
-pub const fps: usize = 60;
+pub const size = 32;
+pub const fps = 60;
 
-pub const Key = struct {
-    x: bool,
-    z: bool,
-    left: bool,
-    right: bool,
-    up: bool,
-    down: bool,
-};
-
-pub const KeyX = 1;
-pub const KeyZ = 2;
-pub const KeyLeft = 16;
-pub const KeyRight = 32;
-pub const KeyUp = 64;
-pub const KeyDown = 128;
-
-pub fn key(pad: u32) Key {
-    return .{
-        .x = (pad & KeyX != 0),
-        .z = (pad & KeyZ != 0),
-        .left = (pad & KeyLeft != 0),
-        .right = (pad & KeyRight != 0),
-        .up = (pad & KeyUp != 0),
-        .down = (pad & KeyDown != 0),
-    };
-}
-
-pub const Size = @Vector(2, usize);
 pub const RGB = @Vector(3, u8);
 pub const RGBA = @Vector(4, u8);
+pub const Point = @Vector(2, usize);
 
-pub var buffer: [size][size][4]u8 = std.mem.zeroes([size][size][4]u8);
+pub var buf: [size][size][4]u8 = std.mem.zeroes([size][size][4]u8);
 
 pub fn clear(c: RGBA) void {
-    for (&buffer) |*row| {
+    for (&buf) |*row| {
         for (row) |*square| {
             square.* = c;
         }
@@ -45,7 +18,7 @@ pub fn clear(c: RGBA) void {
 }
 
 pub fn fill(color: *const fn (x: usize, y: usize) RGBA) void {
-    for (&buffer, 0..) |*row, y| {
+    for (&buf, 0..) |*row, y| {
         for (row, 0..) |*square, x| {
             const c = color(x, y);
 
@@ -59,7 +32,7 @@ pub fn set(x: usize, y: usize, c: RGB) void {
         return;
     }
 
-    buffer[y][x] = .{ c[0], c[1], c[2], 255 };
+    buf[y][x] = .{ c[0], c[1], c[2], 255 };
 }
 
 pub fn hline(x: usize, y: usize, w: usize, color: RGB) void {
@@ -87,7 +60,7 @@ pub fn vline(x: usize, y: usize, h: usize, color: RGB) void {
 }
 
 pub const rectArgs = struct {
-    size: Size = .{ 1, 1 },
+    size: Point = .{ 1, 1 },
     color: RGB = .{ 255, 255, 255 },
 };
 
@@ -100,7 +73,7 @@ pub fn rect(x: usize, y: usize, args: rectArgs) void {
 }
 
 pub const boxArgs = struct {
-    size: Size = .{ 1, 1 },
+    size: Point = .{ 1, 1 },
     color: RGB = .{ 0, 0, 0 },
     fill: bool = false,
     fillColor: RGB = .{ 0, 0, 0 },
@@ -109,7 +82,7 @@ pub const boxArgs = struct {
 pub fn box(x: usize, y: usize, args: boxArgs) void {
     if (args.fill) {
         rect(x, y, .{
-            .size = args.size -| Size{ 1, 1 },
+            .size = args.size -| Point{ 1, 1 },
             .color = args.fillColor,
         });
     }
@@ -150,16 +123,47 @@ pub fn rgba(hexa: u32) RGBA {
     };
 }
 
-pub extern fn consoleLog(arg: usize) void;
-
-export fn canvasSize() usize {
+export fn Size() usize {
     return size;
 }
 
-export fn canvasFPS() usize {
+export fn FPS() usize {
     return fps;
 }
 
-export fn canvasBufferOffset() [*]u8 {
-    return @ptrCast(&buffer);
+export fn Offset() [*]u8 {
+    return @ptrCast(&buf);
+}
+
+extern "env" fn Log(ptr: [*]const u8, size: u32) void;
+
+pub fn log(message: []const u8) void {
+    Log(message.ptr, message.len);
+}
+
+pub const Key = struct {
+    x: bool,
+    z: bool,
+    left: bool,
+    right: bool,
+    up: bool,
+    down: bool,
+};
+
+pub const KeyX = 1;
+pub const KeyZ = 2;
+pub const KeyLeft = 16;
+pub const KeyRight = 32;
+pub const KeyUp = 64;
+pub const KeyDown = 128;
+
+pub fn key(pad: u32) Key {
+    return .{
+        .x = (pad & KeyX != 0),
+        .z = (pad & KeyZ != 0),
+        .left = (pad & KeyLeft != 0),
+        .right = (pad & KeyRight != 0),
+        .up = (pad & KeyUp != 0),
+        .down = (pad & KeyDown != 0),
+    };
 }

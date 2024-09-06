@@ -1,21 +1,21 @@
-/* number of pages, specified in build.zig */
-var memory = new WebAssembly.Memory({
-  initial: 4,
-  maximum: 4,
-});
+const binary = "zig-out/bin/art-canvas.wasm";
 
-var importObject = {
-    env: {
-        consoleLog: (arg) => console.log(arg), // Useful for debugging on Zig's side
-        memory: memory,
-    },
+class State { gamepad = 0; mem = undefined; }
+
+const state = new State();
+const text = new TextDecoder();
+
+var imports = {
+  env: {
+    Log: (ptr, len) => {
+      // Useful for debugging on Zig's side
+      const buf = state.mem.slice(ptr, ptr+len);
+
+      console.log(text.decode(buf));
+    }
+  },
 };
 
-var source = fetch("zig-out/bin/art-canvas.wasm");
-
-class State {
-  gamepads = [0];
-}
 
 const KEY_X = 1;
 const KEY_Z = 2;
@@ -24,21 +24,23 @@ const KEY_RIGHT = 32;
 const KEY_UP = 64;
 const KEY_DOWN = 128;
 
-WebAssembly.instantiateStreaming(source, importObject).then((wasm) => {
-    const state = new State();
 
-    const mem = new Uint8Array(memory.buffer);
-    const canvas = document.getElementById("art");
+fetch(binary).then((source) => {
+  WebAssembly.instantiateStreaming(source, imports).then((wasm) => {
+    state.mem = new Uint8Array(wasm.instance.exports.memory.buffer);
+    const size = wasm.instance.exports.Size();
+    const art = document.getElementById("art");
 
-    const size = wasm.instance.exports.canvasSize();
+    art.width = size;
+    art.height = size;
 
-    canvas.width = size;
-    canvas.height = size;
+    const ctx = art.getContext("2d");
+    const image = ctx.createImageData(art.width, art.height);
+    const offset = wasm.instance.exports.Offset();
+    const offsetEnd = offset + art.width * art.height * 4;
+    const fps = wasm.instance.exports.FPS();
 
-    const context = canvas.getContext("2d");
-    const imageData = context.createImageData(canvas.width, canvas.height);
-    const bufferOffset = wasm.instance.exports.canvasBufferOffset();
-    const fps = wasm.instance.exports.canvasFPS();
+    wasm.instance.exports.start();
 
     let timeNextDraw = performance.now();
 
@@ -56,35 +58,33 @@ WebAssembly.instantiateStreaming(source, importObject).then((wasm) => {
       let mask = 0;
 
       switch (event.code) {
-      case "KeyX": case "KeyV": case "Space": case "Period":
-        mask = KEY_X;
-        break;
-      case "KeyZ": case "KeyC": case "Comma":
-        mask = KEY_Z;
-        break;
-      case "ArrowUp":
-        mask = KEY_UP;
-        break;
-      case "ArrowDown":
-        mask = KEY_DOWN;
-        break;
-      case "ArrowLeft":
-        mask = KEY_LEFT;
-        break;
-      case "ArrowRight":
-        mask = KEY_RIGHT;
-        break;
+        case "KeyX": case "KeyV": case "Space": case "Period":
+          mask = KEY_X;
+          break;
+        case "KeyZ": case "KeyC": case "Comma":
+          mask = KEY_Z;
+          break;
+        case "ArrowUp":
+          mask = KEY_UP;
+          break;
+        case "ArrowDown":
+          mask = KEY_DOWN;
+          break;
+        case "ArrowLeft":
+          mask = KEY_LEFT;
+          break;
+        case "ArrowRight":
+          mask = KEY_RIGHT;
+          break;
       }
 
       if (mask != 0) {
         event.preventDefault();
 
-        const gamepads = state.gamepads;
-
         if (down) {
-            gamepads[0] |= mask;
+          state.gamepad |= mask;
         } else {
-            gamepads[0] &= ~mask;
+          state.gamepad &= ~mask;
         }
       }
     };
@@ -95,29 +95,31 @@ WebAssembly.instantiateStreaming(source, importObject).then((wasm) => {
     const frame = (timeFrameStart) => {
       requestAnimationFrame(frame);
 
-      wasm.instance.exports.update(state.gamepads[0]);
-
       let calledDraw = false;
 
       if (timeFrameStart - timeNextDraw >= 200) {
-          timeNextDraw = timeFrameStart;
+        timeNextDraw = timeFrameStart;
       }
 
       while (timeFrameStart >= timeNextDraw) {
         timeNextDraw += 1000/fps;
+        wasm.instance.exports.update(state.gamepad);
         wasm.instance.exports.draw();
         calledDraw = true;
       }
 
       if (calledDraw) {
-        imageData.data.set(mem.slice(
-            bufferOffset,
-            bufferOffset + canvas.width * canvas.height * 4
-        ));
-
-        context.putImageData(imageData, 0, 0);
+        image.data.set(state.mem.slice(offset, offsetEnd));
+        ctx.putImageData(image, 0, 0);
       }
     };
 
-    requestAnimationFrame(frame);
+    if(fps == 0) {
+      wasm.instance.exports.draw();
+      image.data.set(state.mem.slice(offset, offsetEnd));
+      ctx.putImageData(image, 0, 0);
+    } else {
+      requestAnimationFrame(frame);
+    }
+  });
 });
