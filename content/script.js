@@ -1,32 +1,18 @@
 const binary = "zig-out/bin/art-canvas.wasm";
 
-class State { gamepad = 0; mem = undefined; }
-
-const state = new State();
-const text = new TextDecoder();
-
-var imports = {
-  env: {
-    Log: (ptr, len) => {
-      // Useful for debugging on Zig's side
-      const buf = state.mem.slice(ptr, ptr+len);
-
-      console.log(text.decode(buf));
-    }
-  },
-};
-
-
-const KEY_X = 1;
-const KEY_Z = 2;
-const KEY_LEFT = 16;
-const KEY_RIGHT = 32;
-const KEY_UP = 64;
-const KEY_DOWN = 128;
-
+const state = {};
 
 fetch(binary).then((source) => {
-  WebAssembly.instantiateStreaming(source, imports).then((wasm) => {
+  WebAssembly.instantiateStreaming(source, {
+    env: {
+      Log: (ptr, len) => {
+        // Useful for debugging on Zig's side
+        const buf = state.mem.slice(ptr, ptr+len);
+
+        console.log(new TextDecoder().decode(buf));
+      }
+    },
+  }).then((wasm) => {
     state.mem = new Uint8Array(wasm.instance.exports.memory.buffer);
     const size = wasm.instance.exports.Size();
     const art = document.getElementById("art");
@@ -56,6 +42,13 @@ fetch(binary).then((source) => {
       const down = (event.type == "keydown");
 
       let mask = 0;
+
+      const KEY_X = 1;
+      const KEY_Z = 2;
+      const KEY_LEFT = 16;
+      const KEY_RIGHT = 32;
+      const KEY_UP = 64;
+      const KEY_DOWN = 128;
 
       switch (event.code) {
         case "KeyX": case "KeyV": case "Space": case "Period":
