@@ -13,11 +13,11 @@ build:
 
 .PHONY: spy
 spy:
-	spy --exc zig-cache --inc "**/*.zig" -q clear-zig build
+	spy --exc zig-cache --inc "src/*" --exc "**/*.wasm" -q clear-zig build
 
 .PHONY: run
 run: build
-	npx live-server . --wait=0ms --watch=zig-out/bin
+	npx live-server . --ignore="src,.git,.zig-cache" --wait=0ms --watch=.
 
 .PHONY: clean
 clean:
