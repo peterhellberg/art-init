@@ -144,7 +144,7 @@ func replacer(cfg config, name string, data []byte) []byte {
 		data = replaceOne(data, `HOSTNAME=localhost`, `HOSTNAME=`+cfg.hostname)
 		data = replaceOne(data, `SERVER_PATH=~/public_html`, `SERVER_PATH=`+cfg.serverPath)
 		return data
-	case "README.md", "build.zig", "script.js":
+	case "README.md", "build.zig", "build.zig.zon", "script.js":
 		return replaceOne(data, "art-canvas", cfg.dir)
 	case "index.html":
 		return replaceOne(data, "art-canvas-title", cfg.title)

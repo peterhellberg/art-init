@@ -16,16 +16,16 @@ fetch(binary).then((source) => {
     state.mem = new Uint8Array(wasm.instance.exports.memory.buffer);
 
     const fps = wasm.instance.exports.fps();
-    const art = document.getElementById("art");
+    const canvas = document.getElementById("art");
 
-    art.width = wasm.instance.exports.width();
-    art.height = wasm.instance.exports.height();
+    canvas.width = wasm.instance.exports.width();
+    canvas.height = wasm.instance.exports.height();
 
-    const ctx = art.getContext("2d");
-    const image = ctx.createImageData(art.width, art.height);
+    const ctx = canvas.getContext("2d");
+    const image = ctx.createImageData(canvas.width, canvas.height);
 
     const offset = wasm.instance.exports.offset();
-    const offsetEnd = offset + art.width * art.height * 4;
+    const offsetEnd = offset + canvas.width * canvas.height * 4;
 
     wasm.instance.exports.start();
 

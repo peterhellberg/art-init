@@ -1,4 +1,4 @@
-const art = @import("art.zig");
+const art = @import("art");
 
 const white = art.rgb(0xFFFFFF);
 const green = art.rgb(0x7CAF3C);
@@ -41,7 +41,7 @@ export fn update(pad: u32) void {
 }
 
 export fn draw() void {
-    canvas.clear(.{ 0, 50, 0, 255 });
+    canvas.clear(.{ 0, 0, 0, 0 });
     canvas.fill(pattern);
     canvas.hline(14, 12, 5, .{ 255, 0, 255 });
     canvas.set(pos[0], pos[1], color);
