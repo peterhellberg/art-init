@@ -14,17 +14,18 @@ fetch(binary).then((source) => {
     },
   }).then((wasm) => {
     state.mem = new Uint8Array(wasm.instance.exports.memory.buffer);
-    const size = wasm.instance.exports.Size();
+
+    const fps = wasm.instance.exports.fps();
     const art = document.getElementById("art");
 
-    art.width = size;
-    art.height = size;
+    art.width = wasm.instance.exports.width();
+    art.height = wasm.instance.exports.height();
 
     const ctx = art.getContext("2d");
     const image = ctx.createImageData(art.width, art.height);
-    const offset = wasm.instance.exports.Offset();
+
+    const offset = wasm.instance.exports.offset();
     const offsetEnd = offset + art.width * art.height * 4;
-    const fps = wasm.instance.exports.FPS();
 
     wasm.instance.exports.start();
 
