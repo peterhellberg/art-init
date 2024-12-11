@@ -22,7 +22,7 @@ fn input(pad: u32) void {
     old = pad;
 }
 
-fn pattern(x: usize, y: usize) art.RGBA {
+fn pattern(x: i32, y: i32) art.RGBA {
     return .{
         @as(u8, @intCast(x * 3 ^ y)),
         @as(u8, @intCast(x * 3 ^ y)),
