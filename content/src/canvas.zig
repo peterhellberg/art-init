@@ -12,9 +12,9 @@ var pos: art.Point = .{ 0, 0 };
 fn input(pad: u32) void {
     const key = art.key(pad, old);
 
-    if (key.held(.left)) pos[0] -|= 1;
+    if (key.held(.left) and pos[0] > 0) pos[0] -|= 1;
     if (key.held(.right) and pos[0] < canvas.width - 1) pos[0] += 1;
-    if (key.held(.up)) pos[1] -|= 1;
+    if (key.held(.up) and pos[1] > 0) pos[1] -|= 1;
     if (key.held(.down) and pos[1] < canvas.height - 1) pos[1] += 1;
     if (key.pressed(.z)) color = white;
     if (key.pressed(.x)) color = if (@reduce(.And, color == green)) white else green;
