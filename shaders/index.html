@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>art-canvas-title</title>
+    <style>
+      :root {
+        --main-bg-color: #191919;
+      }
+
+      body {
+        background: var(--main-bg-color);
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      canvas {
+        aspect-ratio: auto;
+        image-rendering: crisp-edges;
+        height: 100dvh;
+      }
+    </style>
+  </head>
+  <body>
+    <center>
+      <canvas id="canvas" width="100%" height="100%"></canvas>
+    </center>
+    <script>
+      const bin = "zig-out/bin/webgl.wasm";
+
+      let memory;
+      let mouse = {x: 0, y: 0};
+
+      window.onresize = function(){ location.reload(); }
+
+      const readCharStr = (ptr, len) => {
+        const bytes = new Uint8Array(memory.buffer, ptr, len);
+        return new TextDecoder("utf-8").decode(bytes);
+      }
+
+      const canvas = document.getElementById("canvas");
+      const scale = window.devicePixelRatio;
+
+      canvas.width = Math.floor(window.innerWidth * scale);
+      canvas.height = Math.floor(window.innerHeight * scale);
+
+      const gl = canvas.getContext('webgl');
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      const shaders = [];
+      const glPrograms = [];
+      const glBuffers = [];
+      const glUniformLocations = [];
+
+      const compileShader = (sourcePtr, sourceLen, type) => {
+        const source = readCharStr(sourcePtr, sourceLen);
+        const shader = gl.createShader(type);
+
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          throw "Error compiling shader:" + gl.getShaderInfoLog(shader);
+        }
+
+        shaders.push(shader);
+
+        return shaders.length - 1;
+      }
+
+      const linkShaderProgram = (vertexShaderId, fragmentShaderId) => {
+        const program = gl.createProgram();
+        gl.attachShader(program, shaders[vertexShaderId]);
+        gl.attachShader(program, shaders[fragmentShaderId]);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          throw ("Error linking program:" + gl.getProgramInfoLog (program));
+        }
+
+        glPrograms.push(program);
+
+        return glPrograms.length - 1;
+      }
+
+      const glClearColor = (r, g, b, a) => gl.clearColor(r, g, b, a);
+      const glEnable = x => gl.enable(x);
+      const glDepthFunc = x => gl.depthFunc(x);
+      const glClear = x => gl.clear(x);
+      const glGetAttribLocation = (programId, namePtr, nameLen) => gl.getAttribLocation(glPrograms[programId], readCharStr(namePtr, nameLen));
+
+      const glGetUniformLocation = (programId, namePtr, nameLen) =>  {
+        glUniformLocations.push(gl.getUniformLocation(glPrograms[programId], readCharStr(namePtr, nameLen)));
+        return glUniformLocations.length - 1;
+      }
+
+      const glUniform1f = (locationId, v0) => gl.uniform1f(glUniformLocations[locationId], [v0]);
+      const glUniform2fv = (locationId, v0, v1) => gl.uniform2fv(glUniformLocations[locationId], [v0, v1]);
+
+      const glUniform4fv = (locationId, x, y, z, w) => gl.uniform4fv(glUniformLocations[locationId], [x, y, z, w]);
+
+      const glCreateBuffer = () => {
+        glBuffers.push(gl.createBuffer());
+        return glBuffers.length - 1;
+      }
+
+      const glBindBuffer = (type, bufferId) => gl.bindBuffer(type, glBuffers[bufferId]);
+
+      const glBufferData = (type, dataPtr, count, drawType) => {
+        const floats = new Float32Array(memory.buffer, dataPtr, count);
+        gl.bufferData(type, floats, drawType);
+      }
+
+      const glUseProgram = (programId) => gl.useProgram(glPrograms[programId]);
+      const glEnableVertexAttribArray = (x) => gl.enableVertexAttribArray(x);
+
+      const glVertexAttribPointer = (attribLocation, size, type, normalize, stride, offset) => {
+        gl.vertexAttribPointer(attribLocation, size, type, normalize, stride, offset);
+      }
+
+      const glDrawArrays = (type, offset, count) => gl.drawArrays(type, offset, count);
+
+      const sin = (v) => Math.sin;
+      const cos = (v) => Math.cos;
+
+      fetchAndInstantiate(bin, {
+        env: {
+          sin,
+          cos,
+          compileShader,
+          linkShaderProgram,
+          glClearColor,
+          glEnable,
+          glDepthFunc,
+          glClear,
+          glGetAttribLocation,
+          glGetUniformLocation,
+          glUniform1f,
+          glUniform2fv,
+          glUniform4fv,
+          glCreateBuffer,
+          glBindBuffer,
+          glBufferData,
+          glUseProgram,
+          glEnableVertexAttribArray,
+          glVertexAttribPointer,
+          glDrawArrays
+        }
+      }).then(function(instance) {
+        memory = instance.exports.memory;
+
+        instance.exports.onInit();
+
+        const onAnimationFrame = instance.exports.onAnimationFrame;
+
+        function step(ts) {
+          onAnimationFrame(ts, canvas.width, canvas.height, mouse.x, mouse.y);
+          window.requestAnimationFrame(step);
+        }
+
+        window.requestAnimationFrame(step);
+      });
+
+      function fetchAndInstantiate(url, importObject) {
+        return fetch(url).then(response => response.arrayBuffer()).
+          then(bytes => WebAssembly.instantiate(bytes, importObject)).
+          then(results => results.instance);
+      }
+
+      function getRelativeMousePosition(event, target) {
+        target = target || event.target;
+        var rect = target.getBoundingClientRect();
+
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+        }
+      }
+
+      // assumes target or event.target is canvas
+      function getNoPaddingNoBorderCanvasRelativeMousePosition(event, target) {
+        target = target || event.target;
+        var pos = getRelativeMousePosition(event, target);
+
+        pos.x = pos.x * target.width  / target.clientWidth;
+        pos.y = pos.y * target.height / target.clientHeight;
+
+        return pos;
+      }
+
+      window.addEventListener('mousemove', e => {
+        const pos = getNoPaddingNoBorderCanvasRelativeMousePosition(e, gl.canvas);
+
+        mouse.x = pos.x;
+        mouse.y = pos.y;
+      });
+
+      window.addEventListener('touchmove', e => {
+        const pos = getNoPaddingNoBorderCanvasRelativeMousePosition(e.touches[0], gl.canvas);
+
+        mouse.x = pos.x;
+        mouse.y = pos.y;
+      });
+    </script>
+  </body>
+</html>
