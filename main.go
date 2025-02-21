@@ -7,14 +7,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 //go:embed all:content
 var content embed.FS
 
+//go:embed all:shaders
+var shaders embed.FS
+
 const (
 	defaultHostname   = "art.c7.se"
 	defaultServerPath = "/var/www/art.c7.se"
+	defaultShaders    = false
 )
 
 type config struct {
@@ -22,6 +27,7 @@ type config struct {
 	title      string
 	hostname   string
 	serverPath string
+	shaders    bool
 }
 
 func main() {
@@ -47,6 +53,7 @@ func run(args []string, _ io.Writer) error {
 	flags.StringVar(&cfg.title, "title", "", "The title of the ART project")
 	flags.StringVar(&cfg.hostname, "hostname", defaultHostname, "The hostname to deploy the ART canvas to")
 	flags.StringVar(&cfg.serverPath, "server-path", defaultServerPath, "The path on the server ART should be uploaded to")
+	flags.BoolVar(&cfg.shaders, "shaders", defaultShaders, "Should the shaders template be used or not")
 
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
@@ -65,6 +72,10 @@ func run(args []string, _ io.Writer) error {
 		cfg.title = cfg.dir
 	}
 
+	if cfg.shaders {
+		cfg.serverPath = filepath.Join(cfg.serverPath, "shaders")
+	}
+
 	// Make sure that dir does not already exist
 	if _, err := os.Stat(cfg.dir); !os.IsNotExist(err) {
 		return fmt.Errorf("%q already exists", cfg.dir)
@@ -80,7 +91,19 @@ func run(args []string, _ io.Writer) error {
 		return err
 	}
 
-	entries, err := content.ReadDir("content")
+	var (
+		writeFile = contentWriteFile
+		srcFS     = content
+		srcBase   = "content"
+	)
+
+	if cfg.shaders {
+		writeFile = shadersWriteFile
+		srcFS = shaders
+		srcBase = "shaders"
+	}
+
+	entries, err := srcFS.ReadDir(srcBase)
 	if err != nil {
 		return err
 	}
@@ -92,7 +115,7 @@ func run(args []string, _ io.Writer) error {
 			}
 		} else {
 			if e.Name() == "src" {
-				srcEntries, err := content.ReadDir("content/src")
+				srcEntries, err := srcFS.ReadDir(srcBase + "/src")
 				if err != nil {
 					return err
 				}
@@ -122,10 +145,25 @@ func createFile(name string) error {
 	return err
 }
 
-func writeFile(cfg config, name string, dataFuncs ...dataFunc) error {
+type writeFileFunc func(cfg config, name string, dataFuncs ...dataFunc) error
+
+func contentWriteFile(cfg config, name string, dataFuncs ...dataFunc) error {
 	data, err := content.ReadFile("content/" + name)
 	if err != nil {
-		return fmt.Errorf("writeFile: %w", err)
+		return fmt.Errorf("contentWriteFile: %w", err)
+	}
+
+	for i := range dataFuncs {
+		data = dataFuncs[i](cfg, name, data)
+	}
+
+	return os.WriteFile(name, data, 0o644)
+}
+
+func shadersWriteFile(cfg config, name string, dataFuncs ...dataFunc) error {
+	data, err := shaders.ReadFile("shaders/" + name)
+	if err != nil {
+		return fmt.Errorf("shadersWriteFile: %w", err)
 	}
 
 	for i := range dataFuncs {
@@ -147,7 +185,9 @@ func replacer(cfg config, name string, data []byte) []byte {
 	case "README.md", "build.zig", "build.zig.zon", "script.js":
 		return replaceOne(data, "art-canvas", cfg.dir)
 	case "index.html":
-		return replaceOne(data, "art-canvas-title", cfg.title)
+		data = replaceOne(data, "art-canvas-title", cfg.title)
+		data = replaceOne(data, "zig-out/bin/webgl.wasm", fmt.Sprintf("zig-out/bin/%s.wasm", cfg.dir))
+		return data
 	default:
 		return data
 	}
