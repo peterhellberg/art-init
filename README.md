@@ -35,4 +35,13 @@ cd mycanvas
 make run
 ```
 
+> [!Tip]
+> If you want to write WebGL shaders instead, then use the `-shaders` flag
+>
+> ```sh
+> art-init -shaders myshaders
+> cd myshaders
+> make run
+> ```
+
 :seedling:
