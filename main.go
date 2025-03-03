@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"embed"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 //go:embed all:content
@@ -28,19 +31,27 @@ type config struct {
 	hostname   string
 	serverPath string
 	shaders    bool
+	zon        ZON
+}
+
+type ZON struct {
+	name        string
+	fingerprint string
 }
 
 func main() {
-	if err := run(os.Args, os.Stdout); err != nil {
+	if err := run(os.Args, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string, _ io.Writer) error {
+func parse(args []string, stderr io.Writer) (config, error) {
 	var cfg config
 
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
+
+	flags.SetOutput(stderr)
 
 	flags.Usage = func() {
 		format := "Usage: %s [OPTION]... DIRECTORY\n\nOptions:\n"
@@ -56,14 +67,14 @@ func run(args []string, _ io.Writer) error {
 	flags.BoolVar(&cfg.shaders, "shaders", defaultShaders, "Should the shaders template be used or not")
 
 	if err := flags.Parse(args[1:]); err != nil {
-		return err
+		return cfg, err
 	}
 
 	rest := flags.Args()
 
 	// Require a directory name
 	if len(rest) < 1 {
-		return fmt.Errorf("no name given as the first argument")
+		return cfg, fmt.Errorf("no name given as the first argument")
 	}
 
 	cfg.dir = rest[0]
@@ -74,6 +85,22 @@ func run(args []string, _ io.Writer) error {
 
 	if cfg.shaders {
 		cfg.serverPath = filepath.Join(cfg.serverPath, "shaders")
+	}
+
+	zon, err := initZON(cfg.dir)
+	if err != nil {
+		return cfg, err
+	}
+
+	cfg.zon = zon
+
+	return cfg, nil
+}
+
+func run(args []string, stderr io.Writer) error {
+	cfg, err := parse(args, stderr)
+	if err != nil {
+		return err
 	}
 
 	// Make sure that dir does not already exist
@@ -182,11 +209,16 @@ func replacer(cfg config, name string, data []byte) []byte {
 		data = replaceOne(data, `HOSTNAME=localhost`, `HOSTNAME=`+cfg.hostname)
 		data = replaceOne(data, `SERVER_PATH=~/public_html`, `SERVER_PATH=`+cfg.serverPath)
 		return data
-	case "README.md", "build.zig", "build.zig.zon", "script.js":
+	case "README.md", "build.zig", "script.js":
 		return replaceOne(data, "art-canvas", cfg.dir)
 	case "index.html":
 		data = replaceOne(data, "art-canvas-title", cfg.title)
 		data = replaceOne(data, "zig-out/bin/webgl.wasm", fmt.Sprintf("zig-out/bin/%s.wasm", cfg.dir))
+		return data
+	case "build.zig.zon":
+		data = replaceOne(data, ".art_canvas_name", cfg.zon.name)
+		data = replaceOne(data, "0x7f6ba5038cf6243c", cfg.zon.fingerprint)
+
 		return data
 	default:
 		return data
@@ -195,4 +227,65 @@ func replacer(cfg config, name string, data []byte) []byte {
 
 func replaceOne(data []byte, old, new string) []byte {
 	return bytes.Replace(data, []byte(old), []byte(new), 1)
+}
+
+func initZON(dir string) (ZON, error) {
+	tmp, err := os.MkdirTemp("", "art-init-")
+	if err != nil {
+		return ZON{}, err
+	}
+	defer os.RemoveAll(tmp)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ZON{}, err
+	}
+	defer os.Chdir(cwd)
+
+	tmpDir := filepath.Join(tmp, dir)
+
+	if err := os.Mkdir(tmpDir, 0o755); err != nil {
+		return ZON{}, err
+	}
+
+	if err := os.Chdir(tmpDir); err != nil {
+		return ZON{}, err
+	}
+
+	cmd := exec.Command("zig", "init")
+
+	if err := cmd.Run(); err != nil {
+		return ZON{}, err
+	}
+
+	zonPath := filepath.Join(tmpDir, "build.zig.zon")
+
+	return extractZON(zonPath)
+}
+
+func extractZON(zonPath string) (ZON, error) {
+	var zon ZON
+
+	f, err := os.Open(zonPath)
+	if err != nil {
+		return zon, err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+
+	for scanner.Scan() {
+		text := strings.TrimSpace(scanner.Text())
+
+		if prefix := ".name = "; strings.Contains(text, prefix) {
+			zon.name = strings.TrimSuffix(strings.TrimPrefix(text, prefix), ",")
+		}
+
+		if prefix := ".fingerprint = "; strings.Contains(text, prefix) {
+			fingerprint, _, _ := strings.Cut(strings.TrimPrefix(text, prefix), ",")
+			zon.fingerprint = fingerprint
+		}
+	}
+
+	return zon, nil
 }
