@@ -1,5 +1,6 @@
 .{
-    .name = "art-canvas",
+    .name = .art_canvas_name,
+    .fingerprint = 0x7f6ba5038cf6243c,
     .version = "0.0.0",
     .paths = .{""},
     .dependencies = .{},
