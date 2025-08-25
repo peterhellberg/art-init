@@ -5,13 +5,15 @@ const number_of_pages = 4;
 pub fn build(b: *std.Build) void {
     const exe = b.addExecutable(.{
         .name = "art-canvas",
-        .root_source_file = b.path("src/canvas.zig"),
-        .target = b.resolveTargetQuery(.{
-            .cpu_arch = .wasm32,
-            .os_tag = .freestanding,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/canvas.zig"),
+            .target = b.resolveTargetQuery(.{
+                .cpu_arch = .wasm32,
+                .os_tag = .freestanding,
+            }),
+            .optimize = .ReleaseSmall,
+            .strip = true,
         }),
-        .optimize = .ReleaseSmall,
-        .strip = true,
     });
 
     exe.root_module.addImport("art", b.dependency("art", .{}).module("art"));
