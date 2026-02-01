@@ -13,11 +13,12 @@ build:
 
 .PHONY: spy
 spy:
-	spy --exc zig-cache --inc "src/*" --exc "**/*.wasm" -q clear-zig build
+	zig build --watch
 
 .PHONY: run
 run: build
-	npx live-server . --ignore="src,.git,.zig-cache" --wait=0ms --watch=.
+	@command -v npx >/dev/null 2>&1 || { echo >&2 "missing npx, install npm"; exit 1; }
+	npx --yes live-server . --ignore="src,.git,.zig-cache" --wait=0ms --watch=.
 
 .PHONY: clean
 clean:
