@@ -7,7 +7,7 @@ for use in a [Canvas](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_AP
 
 File watcher can be started by calling:
 ```sh
-make spy
+make watch
 ```
 
 Running the canvas:
