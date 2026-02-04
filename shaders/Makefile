@@ -5,15 +5,19 @@ SERVER_PATH=~/public_html/${NAME}
 HOSTNAME=localhost
 
 .PHONY: all
-all: build
+all: dev
+
+.PHONY: dev
+dev:
+	@tmux new-session 'make watch' \; split-window 'make run'
 
 .PHONY: build
 build:
-	zig build
+	@zig build
 
 .PHONY: watch
 watch:
-	zig build --watch --debounce 50 --error-style minimal
+	@zig build --watch --debounce 50 --error-style minimal
 
 .PHONY: run
 run: build
