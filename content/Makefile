@@ -17,8 +17,7 @@ watch:
 
 .PHONY: run
 run: build
-	@command -v npx >/dev/null 2>&1 || { echo >&2 "missing npx, install npm"; exit 1; }
-	npx --yes live-server . --ignore="src,.git,.zig-cache" --wait=0ms --watch=.
+	@go run github.com/peterhellberg/live@latest
 
 .PHONY: clean
 clean:
