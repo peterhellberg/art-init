@@ -11,9 +11,9 @@ all: build
 build:
 	zig build
 
-.PHONY: spy
-spy:
-	zig build --watch
+.PHONY: watch
+watch:
+	zig build --watch --debounce 50 --error-style minimal
 
 .PHONY: run
 run: build
