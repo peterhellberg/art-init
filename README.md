@@ -20,9 +20,7 @@ go install github.com/peterhellberg/art-init@latest
 
 > [!Note]
 > Live reloading when using `make run` is handled by
-> [Live Server](https://www.npmjs.com/package/live-server)
-> which is launched by `npx` so you will have to have
-> [NPM](https://www.npmjs.com/) installed.
+> <https://github.com/peterhellberg/live> via `go run`.
 
 ## Usage
 
