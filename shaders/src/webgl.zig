@@ -10,7 +10,7 @@ extern fn glUniform2fv(location: c_int, v0: f32, v1: f32) void;
 extern fn glUniform4fv(location: c_int, x: f32, y: f32, z: f32, w: f32) void;
 extern fn glCreateBuffer() c_uint;
 extern fn glBindBuffer(target: c_uint, buffer: c_uint) void;
-extern fn glBufferData(target: c_uint, size: *const f32, data: c_uint, usage: c_uint) void;
+extern fn glBufferData(target: c_uint, data: *const f32, count: c_uint, usage: c_uint) void;
 extern fn glUseProgram(program: c_uint) void;
 extern fn glEnableVertexAttribArray(index: c_uint) void;
 extern fn glVertexAttribPointer(index: c_uint, size: c_uint, typ: c_uint, normalized: c_uint, stride: c_uint, pointer: c_uint) void;

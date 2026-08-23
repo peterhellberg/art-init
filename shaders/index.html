@@ -25,7 +25,7 @@
   </head>
   <body>
     <center>
-      <canvas id="canvas" width="100%" height="100%"></canvas>
+      <canvas id="canvas"></canvas>
     </center>
     <script>
       const bin = "zig-out/bin/webgl.wasm";
@@ -33,7 +33,12 @@
       let memory;
       let mouse = {x: 0, y: 0};
 
-      window.onresize = function(){ location.reload(); }
+      window.addEventListener('resize', () => {
+        canvas.width = Math.floor(window.innerWidth * scale);
+        canvas.height = Math.floor(window.innerHeight * scale);
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      });
 
       const readCharStr = (ptr, len) => {
         const bytes = new Uint8Array(memory.buffer, ptr, len);
