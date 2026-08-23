@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"flag"
 	"fmt"
 	"hash/crc32"
@@ -32,10 +33,10 @@ type config struct {
 	hostname   string
 	serverPath string
 	shaders    bool
-	zon        ZON
+	zon        zon
 }
 
-type ZON struct {
+type zon struct {
 	name        string
 	fingerprint string
 }
@@ -57,7 +58,7 @@ func parse(args []string, stderr io.Writer) (config, error) {
 	flags.Usage = func() {
 		format := "Usage: %s [OPTION]... DIRECTORY\n\nOptions:\n"
 
-		fmt.Fprintf(flags.Output(), format, os.Args[0])
+		fmt.Fprintf(flags.Output(), format, args[0])
 
 		flags.PrintDefaults()
 	}
@@ -88,7 +89,7 @@ func parse(args []string, stderr io.Writer) (config, error) {
 		cfg.serverPath = filepath.Join(cfg.serverPath, "shaders")
 	}
 
-	cfg.zon = generateZON(cfg.dir)
+	cfg.zon = generateZon(cfg.dir)
 
 	return cfg, nil
 }
@@ -99,13 +100,14 @@ func run(args []string, stderr io.Writer) error {
 		return err
 	}
 
-	// Make sure that dir does not already exist
-	if _, err := os.Stat(cfg.dir); !os.IsNotExist(err) {
+	switch _, err := os.Stat(cfg.dir); {
+	case err == nil:
 		return fmt.Errorf("%q already exists", cfg.dir)
+	case !errors.Is(err, fs.ErrNotExist):
+		return err
 	}
 
-	// Create the dir and dir/src
-	if err := os.MkdirAll(cfg.dir+"/src", os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Join(cfg.dir, "src"), 0o755); err != nil {
 		return err
 	}
 
@@ -198,7 +200,7 @@ func replaceOne(data []byte, old, new string) []byte {
 	return bytes.Replace(data, []byte(old), []byte(new), 1)
 }
 
-func generateZON(dir string) ZON {
+func generateZon(dir string) zon {
 	name := sanitizeName(dir)
 
 	var id uint32
@@ -207,7 +209,7 @@ func generateZON(dir string) ZON {
 		id = rand.Uint32()
 	}
 
-	return ZON{
+	return zon{
 		name:        "." + name,
 		fingerprint: fmt.Sprintf("0x%08x%08x", crc32.ChecksumIEEE([]byte(name)), id),
 	}
