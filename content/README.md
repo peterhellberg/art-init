@@ -19,3 +19,7 @@ Deploy:
 ```
 make deploy
 ```
+
+> [!Note]
+> `script.js` uses `WebAssembly.instantiateStreaming`, which requires the
+> `.wasm` file to be served with the `Content-Type: application/wasm` header.

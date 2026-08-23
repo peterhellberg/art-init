@@ -7,7 +7,7 @@ fetch(binary).then((source) => {
     env: {
       Log: (ptr, len) => {
         // Useful for debugging on Zig's side
-        const buf = state.mem.slice(ptr, ptr+len);
+        const buf = state.mem.slice(ptr, ptr + len);
 
         console.log(new TextDecoder().decode(buf));
       }
@@ -115,5 +115,7 @@ fetch(binary).then((source) => {
     } else {
       requestAnimationFrame(frame);
     }
+  }).catch((err) => {
+    console.error("Failed to load " + binary + ": " + err);
   });
 });
