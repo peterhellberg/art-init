@@ -161,9 +161,11 @@ func run(args []string, stderr io.Writer) error {
 
 func createFile(name string) error {
 	f, err := os.Create(name)
-	defer func() { f.Close() }()
+	if err != nil {
+		return err
+	}
 
-	return err
+	return f.Close()
 }
 
 type writeFileFunc func(cfg config, name string, dataFuncs ...dataFunc) error
