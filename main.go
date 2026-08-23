@@ -1,16 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"embed"
 	"flag"
 	"fmt"
+	"hash/crc32"
 	"io"
+	"math/rand/v2"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 //go:embed all:content
@@ -87,12 +86,7 @@ func parse(args []string, stderr io.Writer) (config, error) {
 		cfg.serverPath = filepath.Join(cfg.serverPath, "shaders")
 	}
 
-	zon, err := initZON(cfg.dir)
-	if err != nil {
-		return cfg, err
-	}
-
-	cfg.zon = zon
+	cfg.zon = generateZON(cfg.dir)
 
 	return cfg, nil
 }
@@ -229,63 +223,39 @@ func replaceOne(data []byte, old, new string) []byte {
 	return bytes.Replace(data, []byte(old), []byte(new), 1)
 }
 
-func initZON(dir string) (ZON, error) {
-	tmp, err := os.MkdirTemp("", "art-init-")
-	if err != nil {
-		return ZON{}, err
-	}
-	defer os.RemoveAll(tmp)
+func generateZON(dir string) ZON {
+	name := sanitizeName(dir)
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return ZON{}, err
-	}
-	defer os.Chdir(cwd)
+	var id uint32
 
-	tmpDir := filepath.Join(tmp, dir)
-
-	if err := os.Mkdir(tmpDir, 0o755); err != nil {
-		return ZON{}, err
+	for id == 0x00000000 || id == 0xffffffff {
+		id = rand.Uint32()
 	}
 
-	if err := os.Chdir(tmpDir); err != nil {
-		return ZON{}, err
+	return ZON{
+		name:        "." + name,
+		fingerprint: fmt.Sprintf("0x%08x%08x", crc32.ChecksumIEEE([]byte(name)), id),
 	}
-
-	cmd := exec.Command("zig", "init")
-
-	if err := cmd.Run(); err != nil {
-		return ZON{}, err
-	}
-
-	zonPath := filepath.Join(tmpDir, "build.zig.zon")
-
-	return extractZON(zonPath)
 }
 
-func extractZON(zonPath string) (ZON, error) {
-	var zon ZON
+func sanitizeName(dir string) string {
+	b := []byte(dir)
 
-	f, err := os.Open(zonPath)
-	if err != nil {
-		return zon, err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-
-	for scanner.Scan() {
-		text := strings.TrimSpace(scanner.Text())
-
-		if prefix := ".name = "; strings.Contains(text, prefix) {
-			zon.name = strings.TrimSuffix(strings.TrimPrefix(text, prefix), ",")
-		}
-
-		if prefix := ".fingerprint = "; strings.Contains(text, prefix) {
-			fingerprint, _, _ := strings.Cut(strings.TrimPrefix(text, prefix), ",")
-			zon.fingerprint = fingerprint
+	for i, c := range b {
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', c == '_':
+		default:
+			b[i] = '_'
 		}
 	}
 
-	return zon, nil
+	if len(b) > 0 && b[0] >= '0' && b[0] <= '9' {
+		b = append([]byte{'_'}, b...)
+	}
+
+	if len(b) > 32 {
+		b = b[:32]
+	}
+
+	return string(b)
 }
