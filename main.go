@@ -209,7 +209,11 @@ func replacer(cfg config, name string, data []byte) []byte {
 		return replaceOne(data, "art-canvas", cfg.dir)
 	case "index.html":
 		data = replaceOne(data, "art-canvas-title", cfg.title)
-		data = replaceOne(data, "zig-out/bin/webgl.wasm", fmt.Sprintf("zig-out/bin/%s.wasm", cfg.dir))
+
+		if cfg.shaders {
+			data = replaceOne(data, "zig-out/bin/webgl.wasm", fmt.Sprintf("zig-out/bin/%s.wasm", cfg.dir))
+		}
+
 		return data
 	case "build.zig.zon":
 		data = replaceOne(data, ".art_canvas_name", cfg.zon.name)
@@ -222,6 +226,10 @@ func replacer(cfg config, name string, data []byte) []byte {
 }
 
 func replaceOne(data []byte, old, new string) []byte {
+	if !bytes.Contains(data, []byte(old)) {
+		panic(fmt.Sprintf("art-init: placeholder %q missing from template", old))
+	}
+
 	return bytes.Replace(data, []byte(old), []byte(new), 1)
 }
 
