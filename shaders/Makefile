@@ -31,11 +31,7 @@ clean:
 .PHONY: deploy
 deploy: build
 	@ssh ${HOSTNAME} 'mkdir -p ${SERVER_PATH}/${BIN_PATH} ${SERVER_PATH}/src'
-	@scp -q build.zig ${HOSTNAME}:${SERVER_PATH}/build.zig
-	@scp -q build.zig.zon ${HOSTNAME}:${SERVER_PATH}/build.zig.zon
-	@scp -q index.html ${HOSTNAME}:${SERVER_PATH}/index.html
-	@scp -q src/fragment.glslx ${HOSTNAME}:${SERVER_PATH}/src/fragment.glslx
-	@scp -q src/vertex.glslx ${HOSTNAME}:${SERVER_PATH}/src/vertex.glslx
-	@scp -q src/webgl.zig ${HOSTNAME}:${SERVER_PATH}/src/webgl.zig
-	@scp -q ${BIN_PATH}/${NAME}.wasm ${HOSTNAME}:${SERVER_PATH}/${BIN_PATH}/${NAME}.wasm
+	@rsync -a build.zig build.zig.zon index.html ${HOSTNAME}:${SERVER_PATH}/
+	@rsync -a src/ ${HOSTNAME}:${SERVER_PATH}/src/
+	@rsync -a ${BIN_PATH}/${NAME}.wasm ${HOSTNAME}:${SERVER_PATH}/${BIN_PATH}/
 	@echo "✔ Updated ${NAME} on ${ART_URL}"

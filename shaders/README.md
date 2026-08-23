@@ -5,6 +5,10 @@ for use in a [Canvas](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_AP
 
 ## Development
 
+`make dev` (and the default `make all`) requires
+[tmux](https://github.com/tmux/tmux) to run the watcher and server side by side.
+Without tmux, run `make watch` and `make run` in separate terminals.
+
 File watcher can be started by calling:
 ```sh
 make watch
