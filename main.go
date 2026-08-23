@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"io/fs"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -113,39 +114,35 @@ func run(args []string, stderr io.Writer) error {
 	}
 
 	var (
-		writeFile = contentWriteFile
-		srcFS     = content
-		srcBase   = "content"
+		srcFS   = fs.FS(content)
+		srcBase = "content"
 	)
 
 	if cfg.shaders {
-		writeFile = shadersWriteFile
 		srcFS = shaders
 		srcBase = "shaders"
 	}
 
-	entries, err := srcFS.ReadDir(srcBase)
+	entries, err := fs.ReadDir(srcFS, srcBase)
 	if err != nil {
 		return err
 	}
 
 	for _, e := range entries {
 		if !e.IsDir() {
-			if err := writeFile(cfg, e.Name(), replacer); err != nil {
+			if err := writeFile(srcFS, srcBase, cfg, e.Name()); err != nil {
 				return err
 			}
-		} else {
-			if e.Name() == "src" {
-				srcEntries, err := srcFS.ReadDir(srcBase + "/src")
-				if err != nil {
-					return err
-				}
+		} else if e.Name() == "src" {
+			srcEntries, err := fs.ReadDir(srcFS, srcBase+"/src")
+			if err != nil {
+				return err
+			}
 
-				for _, e := range srcEntries {
-					if !e.IsDir() {
-						if err := writeFile(cfg, "src/"+e.Name(), replacer); err != nil {
-							return err
-						}
+			for _, e := range srcEntries {
+				if !e.IsDir() {
+					if err := writeFile(srcFS, srcBase, cfg, "src/"+e.Name()); err != nil {
+						return err
 					}
 				}
 			}
@@ -168,35 +165,14 @@ func createFile(name string) error {
 	return f.Close()
 }
 
-type writeFileFunc func(cfg config, name string, dataFuncs ...dataFunc) error
-
-func contentWriteFile(cfg config, name string, dataFuncs ...dataFunc) error {
-	data, err := content.ReadFile("content/" + name)
+func writeFile(srcFS fs.FS, base string, cfg config, name string) error {
+	data, err := fs.ReadFile(srcFS, base+"/"+name)
 	if err != nil {
-		return fmt.Errorf("contentWriteFile: %w", err)
+		return fmt.Errorf("writeFile: %w", err)
 	}
 
-	for i := range dataFuncs {
-		data = dataFuncs[i](cfg, name, data)
-	}
-
-	return os.WriteFile(name, data, 0o644)
+	return os.WriteFile(name, replacer(cfg, name, data), 0o644)
 }
-
-func shadersWriteFile(cfg config, name string, dataFuncs ...dataFunc) error {
-	data, err := shaders.ReadFile("shaders/" + name)
-	if err != nil {
-		return fmt.Errorf("shadersWriteFile: %w", err)
-	}
-
-	for i := range dataFuncs {
-		data = dataFuncs[i](cfg, name, data)
-	}
-
-	return os.WriteFile(name, data, 0o644)
-}
-
-type dataFunc func(config, string, []byte) []byte
 
 func replacer(cfg config, name string, data []byte) []byte {
 	switch name {
