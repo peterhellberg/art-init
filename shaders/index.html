@@ -122,8 +122,8 @@
 
       const glDrawArrays = (type, offset, count) => gl.drawArrays(type, offset, count);
 
-      const sin = (v) => Math.sin;
-      const cos = (v) => Math.cos;
+      const sin = (v) => Math.sin(v);
+      const cos = (v) => Math.cos(v);
 
       fetchAndInstantiate(bin, {
         env: {
