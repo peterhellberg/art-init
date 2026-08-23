@@ -11,6 +11,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 //go:embed all:content
@@ -123,30 +124,18 @@ func run(args []string, stderr io.Writer) error {
 		srcBase = "shaders"
 	}
 
-	entries, err := fs.ReadDir(srcFS, srcBase)
-	if err != nil {
-		return err
-	}
-
-	for _, e := range entries {
-		if !e.IsDir() {
-			if err := writeFile(srcFS, srcBase, cfg, e.Name()); err != nil {
-				return err
-			}
-		} else if e.Name() == "src" {
-			srcEntries, err := fs.ReadDir(srcFS, srcBase+"/src")
-			if err != nil {
-				return err
-			}
-
-			for _, e := range srcEntries {
-				if !e.IsDir() {
-					if err := writeFile(srcFS, srcBase, cfg, "src/"+e.Name()); err != nil {
-						return err
-					}
-				}
-			}
+	if err := fs.WalkDir(srcFS, srcBase, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		return writeFile(srcFS, srcBase, cfg, strings.TrimPrefix(path, srcBase+"/"))
+	}); err != nil {
+		return err
 	}
 
 	if err := createFile("favicon.ico"); err != nil {
