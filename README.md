@@ -25,7 +25,7 @@ go install github.com/peterhellberg/art-init@latest
 ## Usage
 
 (Requires you to have an up to date (_nightly_) version of
-[Zig](https://ziglang.org/download/#release-master) installed.
+[Zig](https://ziglang.org/download/#release-master) installed.)
 
 ```sh
 art-init mycanvas
